@@ -8,12 +8,17 @@ import os
 from collections import deque
 import random
 import math
+# from utils import cfg_env
 
 import dmc2gym
 
-
+cfg_env='1'
+# class 
 def make_env(cfg):
     """Helper function to create dm_control environment"""
+    # assert False,cfg.env
+    # cfg_env=cfg.env
+    
     if cfg.env == 'ball_in_cup_catch':
         domain_name = 'ball_in_cup'
         task_name = 'catch'
@@ -106,7 +111,12 @@ class MLP(nn.Module):
         self.apply(weight_init)
 
     def forward(self, x):
+        # print(self.trunk[0:1])
+        # print('!!!!!!!!!!!!!')
+        # print(self.trunk[1:])
+        # assert False
         return self.trunk(x)
+    
 
 
 def mlp(input_dim, hidden_dim, output_dim, hidden_depth, output_mod=None):

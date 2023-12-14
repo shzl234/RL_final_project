@@ -18,7 +18,10 @@ class SACAgent(Agent):
                  critic_betas, critic_tau, critic_target_update_frequency,
                  batch_size, learnable_temperature):
         super().__init__()
-
+        # print(action_dim)
+        if False:
+            action_dim=3
+        # assert False ,action_dim
         self.action_range = action_range
         self.device = torch.device(device)
         self.discount = discount
@@ -40,10 +43,47 @@ class SACAgent(Agent):
         # set target entropy to -|A|
         self.target_entropy = -action_dim
 
+        if True:
+            dd='/home/zshccc/projectfile/DRL_hw/final_project/GA/pytorch_sac/reduction/vae_weight/sac_halfc_actor_800000.pth'
+            self.actor.load(self.actor,dd)
+            # dd='/home/zshccc/projectfile/DRL_hw/final_project/GA/pytorch_sac/reduction/vae_weight/sac_halfc_critic_800000.pth'
+            # self.critic.load(self.critic,dd)
         # optimizers
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
-                                                lr=actor_lr,
-                                                betas=actor_betas)
+        for n,p in self.actor.named_parameters():
+            print(n,':' )
+
+        # '''
+        actor_parameters = [
+        {'params': [p for n,p in self.actor.named_parameters() if ('adapter' not in n and '2.4' not in n)], 'lr': actor_lr/10,'betas':actor_betas},
+        {'params': self.actor.adapter.parameters(), 'lr':actor_lr,'betas':actor_betas},
+        {'params': [p for n,p in self.actor.named_parameters() if  '2.4' in n], 'lr': actor_lr,'betas':actor_betas}
+        
+        ]
+        # '''
+        # print(actor_parameters)
+        # actor_parameters = [
+        # {'params': self.actor.parameters(), 'lr': actor_lr/10,'betas':actor_betas},
+        # {'params': self.actor.adapter.parameters(), 'lr':actor_lr,'betas':actor_betas}
+        
+        # ]
+        # print(actor_parameters)
+        # assert False
+        # critic_parameter=[
+        #     {'params': self.critic.parameters(), 'lr': critic_lr/10,'betas':critic_betas},
+        #     {'params': self.critic.adapter1, 'lr':critic_lr,'betas':critic_betas},
+        #     {'params': self.critic.adapter2, 'lr':critic_lr,'betas':critic_betas}
+        # ]
+        self.actor_optimizer=torch.optim.Adam(actor_parameters)
+        # self.critic_optimizer=torch.optim.Adam(critic_parameter)
+        # assert False
+
+
+# 选择优化器
+# optimizer = optim.Adam(parameters)
+
+        # self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
+        #                                         lr=actor_lr,
+        #                                         betas=actor_betas)
 
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),
                                                  lr=critic_lr,
@@ -79,14 +119,19 @@ class SACAgent(Agent):
         dist = self.actor(next_obs)
         next_action = dist.rsample()
         log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
+        
         target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
         target_V = torch.min(target_Q1,
                              target_Q2) - self.alpha.detach() * log_prob
         target_Q = reward + (not_done * self.discount * target_V)
         target_Q = target_Q.detach()
-
+        
+        
         # get current Q estimates
+        # print(obs.shape)
+        # print(action.shape)
         current_Q1, current_Q2 = self.critic(obs, action)
+        # assert False, "22222"
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(
             current_Q2, target_Q)
         logger.log('train_critic/loss', critic_loss, step)
@@ -132,13 +177,22 @@ class SACAgent(Agent):
             self.batch_size)
 
         logger.log('train/batch_reward', reward.mean(), step)
-
+        # assert False, "22222"
         self.update_critic(obs, action, reward, next_obs, not_done_no_max,
                            logger, step)
-
+        # assert False
+        # if step%10000==0:
+        #     # 
+        #     dire1='/home/zshccc/projectfile/DRL_hw/final_project/GA/pytorch_sac/reduction/vae_weight/sac_halfc_actor_'+str(step)+'.pth'
+        #     print('save to ', dire1)
+        #     self.actor.save(self.actor,dire1)
+        #     dire2='/home/zshccc/projectfile/DRL_hw/final_project/GA/pytorch_sac/reduction/vae_weight/sac_halfc_critic_'+str(step)+'.pth'
+        #     self.critic.save(self.critic,dire2)
+        
         if step % self.actor_update_frequency == 0:
             self.update_actor_and_alpha(obs, logger, step)
 
+      
         if step % self.critic_target_update_frequency == 0:
             utils.soft_update_params(self.critic, self.critic_target,
                                      self.critic_tau)

@@ -147,6 +147,8 @@ class Logger(object):
 
     def _try_sw_log(self, key, value, step):
         if self._sw is not None:
+            # print("SELFSWWWWWWWWWW")
+            # assert False
             self._sw.add_scalar(key, value, step)
 
     def _try_sw_log_video(self, key, frames, step):
